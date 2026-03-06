@@ -1,65 +1,105 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from 'react';
+
+// Interfaces de TS para los datos recibidos
+interface Movie {
+  imdbID: string;
+  Title: string;
+  Year: string;
+  Poster: string;
+}
 
 export default function Home() {
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const fetchMovies = async (e: React.FormEvent) => {
+    e.preventDefault(); // Evita que la página se recargue al enviar el formulario
+    
+    if (!searchTerm.trim()) return;
+
+    setLoading(true);
+    setError(null);
+    setMovies([]); // Limpiamos resultados anteriores
+
+    try {
+      // Llamada a NUESTRO proxy local (Backend), no a la API externa
+      const response = await fetch(`http://localhost:4000/api/movies/search?q=${searchTerm}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error de conexión con el servidor.');
+      }
+      
+      const data = await response.json();
+      setMovies(data);
+    } catch (err: any) {
+      // Estado de Error: Mensaje amigable
+      setError(err.message || "¡Ups! Ocurrió un error inesperado.");
+    } finally {
+      // Se ejecuta siempre, haya éxito o error
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="min-h-screen p-8 bg-gray-900 text-white font-sans">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold mb-8 text-center text-yellow-500">Buscador de Películas (SOA)</h1>
+        
+        {/* Formulario de búsqueda */}
+        <form onSubmit={fetchMovies} className="flex justify-center mb-12">
+          <input 
+            type="text" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Ej: Star Wars, Matrix, Avengers..."
+            className="p-4 rounded-l-lg bg-gray-800 text-white placeholder-gray-400 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          />
+          <button 
+            type="submit" 
+            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold p-4 rounded-r-lg transition-colors"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Buscar
+          </button>
+        </form>
+
+        {/* ESTADO 1: Loading (Indicador de carga) */}
+        {loading && (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-500"></div>
+          </div>
+        )}
+
+        {/* ESTADO 2: Error (Mensaje amigable y la app no se rompe) */}
+        {error && !loading && (
+          <div className="bg-red-500/20 border border-red-500 text-red-100 p-4 rounded-lg text-center max-w-lg mx-auto">
+            <p className="font-semibold">{error}</p>
+          </div>
+        )}
+
+        {/* ESTADO 3: Success (Renderizado estético de información) */}
+        {!loading && !error && movies.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {movies.map((movie) => (
+              <div key={movie.imdbID} className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-yellow-500 transition-colors">
+                <img 
+                  src={movie.Poster !== "N/A" ? movie.Poster : "https://via.placeholder.com/300x450?text=Sin+Poster"} 
+                  alt={movie.Title} 
+                  className="w-full h-96 object-cover"
+                />
+                <div className="p-5">
+                  <h2 className="text-xl font-bold mb-2 truncate text-gray-100" title={movie.Title}>{movie.Title}</h2>
+                  <p className="text-md text-yellow-500 font-medium">Año: {movie.Year}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
