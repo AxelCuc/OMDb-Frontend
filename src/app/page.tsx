@@ -26,8 +26,9 @@ export default function Home() {
     setMovies([]); // Limpiamos resultados anteriores
 
     try {
-      // Llamada a NUESTRO proxy local (Backend), no a la API externa
-      const response = await fetch(`http://localhost:4000/api/movies/search?q=${searchTerm}`);
+      // AQUÍ ESTÁ EL CAMBIO: Usamos la variable de entorno para conectarnos a Render
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+      const response = await fetch(`${backendUrl}/api/movies/search?q=${searchTerm}`);
       
       if (!response.ok) {
         const errorData = await response.json();
